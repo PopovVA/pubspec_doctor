@@ -1,0 +1,32 @@
+name: pubspec_doctor
+description: >-
+  Audit pubspec.yaml dependencies: fail the build on unused or discontinued
+  packages and annotate the pull request with the findings.
+author: PopovVA
+branding:
+  icon: activity
+  color: blue
+
+inputs:
+  path:
+    description: Path to the project root containing pubspec.yaml.
+    required: false
+    default: '.'
+  args:
+    description: >-
+      Extra CLI arguments, e.g. "--ignore build_runner --fail-on-stale".
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - uses: dart-lang/setup-dart@v1
+      with:
+        sdk: stable
+    # TODO: switch to `dart pub global activate pubspec_doctor` once the
+    # package is published on pub.dev.
+    - run: dart pub global activate --source git https://github.com/PopovVA/pubspec_doctor.git
+      shell: bash
+    - run: dart pub global run pubspec_doctor --path "${{ inputs.path }}" ${{ inputs.args }}
+      shell: bash

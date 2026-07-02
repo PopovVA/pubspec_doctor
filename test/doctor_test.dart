@@ -149,6 +149,43 @@ dependencies:
     expect(report.hasProblems(failOnStale: true), isTrue);
   });
 
+  test('report renders GitHub annotations', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  unused_pkg: ^1.0.0
+  dead_pkg: ^1.0.0
+  old_pkg: ^1.0.0
+''');
+    write('lib/main.dart', '''
+import 'package:dead_pkg/dead_pkg.dart';
+import 'package:old_pkg/old_pkg.dart';
+''');
+
+    final doctor = Doctor(
+      apiClient: fakePubApi({
+        'unused_pkg': pubInfo('unused_pkg'),
+        'dead_pkg':
+            pubInfo('dead_pkg', discontinued: true, replacedBy: 'alive_pkg'),
+        'old_pkg': pubInfo('old_pkg', published: '2020-01-01T00:00:00Z'),
+      }),
+      now: DateTime.utc(2026, 7, 1),
+    );
+    final annotations =
+        (await doctor.diagnose(root, DoctorOptions())).toGithubAnnotations();
+
+    expect(annotations, hasLength(3));
+    expect(
+      annotations[0],
+      '::error file=pubspec.yaml,title=Unused dependency::'
+      'unused_pkg is declared in dependencies but never used',
+    );
+    expect(annotations[1], contains('Discontinued package'));
+    expect(annotations[1], contains('alive_pkg'));
+    expect(annotations[2], startsWith('::warning'));
+    expect(annotations[2], contains('old_pkg'));
+  });
+
   test('report serializes to JSON', () async {
     write('pubspec.yaml', '''
 name: my_app

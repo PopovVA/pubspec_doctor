@@ -17,3 +17,5 @@ jobs:
       - run: dart format --output=none --set-exit-if-changed .
       - run: dart analyze --fatal-infos
       - run: dart test
+      # Dogfood: audit our own pubspec; fails the build on findings.
+      - run: dart run bin/pubspec_doctor.dart --fail-on-stale
