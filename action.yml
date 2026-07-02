@@ -24,9 +24,7 @@ runs:
     - uses: dart-lang/setup-dart@v1
       with:
         sdk: stable
-    # TODO: switch to `dart pub global activate pubspec_doctor` once the
-    # package is published on pub.dev.
-    - run: dart pub global activate --source git https://github.com/PopovVA/pubspec_doctor.git
+    - run: dart pub global activate pubspec_doctor
       shell: bash
     - run: dart pub global run pubspec_doctor --path "${{ inputs.path }}" ${{ inputs.args }}
       shell: bash
