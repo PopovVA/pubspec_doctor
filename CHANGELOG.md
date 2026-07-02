@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.1.0...v0.2.0) (2026-07-02)
+
+
+### Features
+
+* first-class CI integration ([#2](https://github.com/PopovVA/pubspec_doctor/issues/2)) ([b78d28f](https://github.com/PopovVA/pubspec_doctor/commit/b78d28f529cb06c6b8323e463894382ab34a24f4))
+
 ## 0.1.0
 
 - Initial release.
