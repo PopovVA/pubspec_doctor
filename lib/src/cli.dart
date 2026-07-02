@@ -79,6 +79,10 @@ Future<int> run(List<String> arguments) async {
           .writeln(const JsonEncoder.withIndent('  ').convert(report.toJson()));
     } else {
       stdout.writeln(report.toConsole());
+      // Inside GitHub Actions, also emit findings as PR annotations.
+      if (Platform.environment['GITHUB_ACTIONS'] == 'true') {
+        report.toGithubAnnotations().forEach(stdout.writeln);
+      }
     }
     return report.hasProblems(failOnStale: args.flag('fail-on-stale')) ? 1 : 0;
   } on PubspecNotFoundException catch (e) {

@@ -62,6 +62,32 @@ class Report {
         'healthCheckSkipped': healthCheckSkipped,
       };
 
+  /// GitHub Actions workflow commands (`::error::` / `::warning::`) that
+  /// surface findings as annotations on `pubspec.yaml` in the PR UI.
+  List<String> toGithubAnnotations() {
+    String esc(String message) => message
+        .replaceAll('%', '%25')
+        .replaceAll('\r', '%0D')
+        .replaceAll('\n', '%0A');
+
+    return [
+      for (final name in unusedDependencies)
+        '::error file=pubspec.yaml,title=Unused dependency::'
+            '${esc('$name is declared in dependencies but never used')}',
+      for (final name in unusedDevDependencies)
+        '::error file=pubspec.yaml,title=Unused dev_dependency::'
+            '${esc('$name is declared in dev_dependencies but never used')}',
+      for (final package in discontinued)
+        '::error file=pubspec.yaml,title=Discontinued package::'
+            '${esc('${package.name} is discontinued on pub.dev'
+                '${package.replacedBy == null ? '' : ', suggested replacement: ${package.replacedBy}'}')}',
+      for (final entry in stale)
+        '::warning file=pubspec.yaml,title=Stale package::'
+            '${esc('${entry.health.name} has had no release for ${entry.ageDays} days '
+                '(latest ${entry.health.latestVersion})')}',
+    ];
+  }
+
   String toConsole() {
     final out = StringBuffer()
       ..writeln('pubspec_doctor — diagnosis for "$packageName" '

@@ -64,11 +64,41 @@ Stale packages (no release in a long time):
 | `1` | Unused or discontinued packages found (stale too, with `--fail-on-stale`). |
 | `2` | Usage or runtime error (e.g. no `pubspec.yaml`). |
 
-### CI
+## CI integration
+
+The exit code makes `pubspec_doctor` behave like a test suite: `0` passes the
+build, `1` fails it. On GitHub Actions, findings are also emitted as
+annotations, so unused or discontinued packages show up directly on
+`pubspec.yaml` in the pull request UI.
+
+The easiest way is the bundled GitHub Action:
 
 ```yaml
-- run: dart pub global activate pubspec_doctor
-- run: pubspec_doctor --fail-on-stale
+name: Dependency audit
+on: [pull_request]
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: PopovVA/pubspec_doctor@main
+        with:
+          # path: packages/my_app        # for monorepos
+          args: --fail-on-stale --ignore build_runner
+```
+
+Or run the CLI yourself on any CI system:
+
+```yaml
+- run: dart pub global activate --source git https://github.com/PopovVA/pubspec_doctor.git
+- run: dart pub global run pubspec_doctor --fail-on-stale
+```
+
+For machine-readable pipelines, combine `--json` with `jq`:
+
+```sh
+pubspec_doctor --json | jq '.unusedDependencies'
 ```
 
 ## How "unused" is detected
