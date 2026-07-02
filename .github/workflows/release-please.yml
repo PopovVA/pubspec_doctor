@@ -1,0 +1,20 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # RELEASE_PLEASE_TOKEN (fine-grained PAT) lets CI run on the
+          # release PR; GITHUB_TOKEN works but does not trigger workflows.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          release-type: dart
