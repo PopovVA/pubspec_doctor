@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: PopovVA/pubspec_doctor@main
+      - uses: PopovVA/pubspec_doctor@v0
         with:
           # path: packages/my_app        # for monorepos
           args: --fail-on-stale --ignore build_runner
@@ -91,7 +91,7 @@ jobs:
 Or run the CLI yourself on any CI system:
 
 ```yaml
-- run: dart pub global activate --source git https://github.com/PopovVA/pubspec_doctor.git
+- run: dart pub global activate pubspec_doctor
 - run: dart pub global run pubspec_doctor --fail-on-stale
 ```
 
