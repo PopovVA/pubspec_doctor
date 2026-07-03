@@ -28,5 +28,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -f "v${{ steps.release.outputs.major }}" "v${{ steps.release.outputs.major }}.${{ steps.release.outputs.minor }}.${{ steps.release.outputs.patch }}"
+          # Tag the release SHA directly: the shallow checkout has no tags,
+          # so vX.Y.Z is not resolvable here.
+          git tag -f "v${{ steps.release.outputs.major }}" "${{ steps.release.outputs.sha }}"
           git push -f origin "v${{ steps.release.outputs.major }}"
