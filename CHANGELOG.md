@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.3.0...v0.3.1) (2026-07-03)
+
+
+### Bug Fixes
+
+* **ci:** move major tag by release SHA, not unresolvable tag name ([#7](https://github.com/PopovVA/pubspec_doctor/issues/7)) ([b4a2270](https://github.com/PopovVA/pubspec_doctor/commit/b4a2270879f4bfb00bed2e4a67890317a2e14357))
+
 ## [0.3.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.2.0...v0.3.0) (2026-07-03)
 
 
