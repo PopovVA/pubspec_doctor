@@ -10,6 +10,7 @@ class PackageHealth {
     required this.latestVersion,
     required this.publishedAt,
     this.replacedBy,
+    this.sdkConstraint,
   });
 
   final String name;
@@ -18,12 +19,16 @@ class PackageHealth {
   final String latestVersion;
   final DateTime publishedAt;
 
+  /// The Dart SDK constraint of the latest release, e.g. `>=3.5.0 <4.0.0`.
+  final String? sdkConstraint;
+
   Map<String, Object?> toJson() => {
         'name': name,
         'isDiscontinued': isDiscontinued,
         if (replacedBy != null) 'replacedBy': replacedBy,
         'latestVersion': latestVersion,
         'publishedAt': publishedAt.toIso8601String(),
+        if (sdkConstraint != null) 'sdkConstraint': sdkConstraint,
       };
 }
 
@@ -60,12 +65,15 @@ class PubApiClient {
 
     final body = jsonDecode(response.body) as Map<String, dynamic>;
     final latest = body['latest'] as Map<String, dynamic>;
+    final environment =
+        (latest['pubspec'] as Map<String, dynamic>?)?['environment'];
     return PackageHealth(
       name: package,
       isDiscontinued: body['isDiscontinued'] as bool? ?? false,
       replacedBy: body['replacedBy'] as String?,
       latestVersion: latest['version'] as String,
       publishedAt: DateTime.parse(latest['published'] as String),
+      sdkConstraint: environment is Map ? environment['sdk'] as String? : null,
     );
   }
 

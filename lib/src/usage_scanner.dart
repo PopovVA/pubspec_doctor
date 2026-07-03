@@ -1,10 +1,24 @@
 import 'dart:io';
 
+/// Which packages a project references, split by where the reference lives.
+class UsageResult {
+  UsageResult({required this.public, required this.all});
+
+  /// Packages referenced from runtime code — `lib/`, `bin/`, `web/` — or
+  /// from `packages/<name>/` asset and font references in `pubspec.yaml`.
+  /// These must be declared under `dependencies`.
+  final Set<String> public;
+
+  /// Packages referenced anywhere in the project, including `test/`,
+  /// `tool/`, `example/` and `analysis_options.yaml`.
+  final Set<String> all;
+}
+
 /// Finds which packages a project actually references.
 ///
-/// A package counts as used when it appears as a `package:<name>/` URI in any
-/// Dart file (imports, exports, conditional imports and string literals all
-/// match — erring towards "used" keeps false positives out of the unused
+/// A package counts as used when it appears as a `package:<name>/` URI in
+/// any Dart file (imports, exports, conditional imports and string literals
+/// all match — erring towards "used" keeps false positives out of the unused
 /// list), in an `analysis_options.yaml` include, or as a `packages/<name>/`
 /// asset/font reference in `pubspec.yaml`.
 class UsageScanner {
@@ -14,24 +28,31 @@ class UsageScanner {
   static final _packageAsset = RegExp('packages/([A-Za-z0-9_]+)/');
 
   static const _skippedDirs = {'.dart_tool', 'build', '.git'};
+  static const _publicDirs = {'lib', 'bin', 'web'};
 
-  Set<String> scan(Directory root, {required String pubspecRaw}) {
-    final used = <String>{};
+  UsageResult scan(Directory root, {required String pubspecRaw}) {
+    final public = <String>{};
+    final all = <String>{};
 
     for (final entity in _walk(root)) {
       final name = _fileName(entity);
+      final Set<String> refs;
       if (name.endsWith('.dart')) {
-        used.addAll(_matches(_packageUri, entity.readAsStringSync()));
+        refs = _matches(_packageUri, entity.readAsStringSync());
       } else if (name == 'analysis_options.yaml') {
-        used.addAll(_matches(_unquotedPackageUri, entity.readAsStringSync()));
+        refs = _matches(_unquotedPackageUri, entity.readAsStringSync());
+      } else {
+        continue;
       }
+      all.addAll(refs);
+      if (_isPublic(root, entity)) public.addAll(refs);
     }
 
-    for (final match in _packageAsset.allMatches(pubspecRaw)) {
-      used.add(match.group(1)!);
-    }
+    final assetRefs = _matches(_packageAsset, pubspecRaw);
+    all.addAll(assetRefs);
+    public.addAll(assetRefs);
 
-    return used;
+    return UsageResult(public: public, all: all);
   }
 
   Iterable<File> _walk(Directory root) sync* {
@@ -44,6 +65,19 @@ class UsageScanner {
         yield entity;
       }
     }
+  }
+
+  bool _isPublic(Directory root, File file) {
+    final rootSegments = root.absolute.uri.pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .length;
+    final segments = file.absolute.uri.pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    // Files directly in the root (scripts, analysis_options.yaml) are not
+    // runtime code.
+    if (segments.length <= rootSegments + 1) return false;
+    return _publicDirs.contains(segments[rootSegments]);
   }
 
   Set<String> _matches(RegExp pattern, String content) =>
