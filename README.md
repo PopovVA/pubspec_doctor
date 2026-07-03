@@ -101,6 +101,20 @@ For machine-readable pipelines, combine `--json` with `jq`:
 pubspec_doctor --json | jq '.unusedDependencies'
 ```
 
+## Configuration
+
+Create `pubspec_doctor.yaml` next to your `pubspec.yaml` (or add a
+top-level `pubspec_doctor:` section to `pubspec.yaml` itself):
+
+```yaml
+ignore:
+  - some_internal_pkg
+stale_days: 365
+fail_on_stale: true
+```
+
+CLI flags take precedence over the config file; `ignore` lists are merged.
+
 ## How "unused" is detected
 
 A package counts as **used** when it appears as a `package:<name>/` URI in
@@ -109,17 +123,22 @@ any Dart file (imports, exports and conditional imports), in an
 positives), or as a `packages/<name>/` asset or font reference in
 `pubspec.yaml`. SDK dependencies (`flutter`, `flutter_test`, …) are skipped.
 
-Packages that are genuinely used without being imported — e.g.
-`build_runner` or other codegen runners — should be listed via `--ignore`:
+Codegen and tool packages that are used without being imported are
+recognized automatically:
 
-```sh
-pubspec_doctor --ignore build_runner
-```
+- generators whose companion package is referenced in code — `freezed`
+  (via `freezed_annotation`), `json_serializable` (via `json_annotation`),
+  `drift_dev` (via `drift`), `riverpod_generator`, `mobx_codegen`, and
+  other common pairs;
+- `build_runner`, when any declared package looks like a generator;
+- tools configured through a top-level `pubspec.yaml` key, such as
+  `flutter_launcher_icons` and `flutter_native_splash`.
+
+Anything else that is intentionally unimported can be listed in the
+config `ignore` or via `--ignore`.
 
 ## Roadmap
 
-- Config file (`pubspec_doctor.yaml`) for permanent ignores.
-- Auto-detect codegen packages (`build_runner`, `freezed`, …) as used.
 - Under-/over-promotion checks (dep that should be a dev_dependency and
   vice versa).
 - Dart SDK compatibility check for the latest release of each dependency.

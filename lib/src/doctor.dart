@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'codegen_detector.dart';
 import 'pub_api_client.dart';
 import 'pubspec_info.dart';
 import 'report.dart';
@@ -41,6 +42,11 @@ class Doctor {
     final pubspec = PubspecInfo.load(root);
     final used = _scanner.scan(root, pubspecRaw: pubspec.raw)
       ..add(pubspec.name);
+    used.addAll(CodegenDetector().implicitlyUsed(
+      declared: {...pubspec.dependencies, ...pubspec.devDependencies},
+      referenced: used,
+      pubspecRaw: pubspec.raw,
+    ));
 
     List<String> unusedIn(Set<String> declared) => declared
         .where((d) => !used.contains(d) && !options.ignore.contains(d))

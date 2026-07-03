@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 
+import 'config.dart';
 import 'doctor.dart';
 import 'pubspec_info.dart';
 
@@ -59,21 +60,28 @@ Future<int> run(List<String> arguments) async {
     return 0;
   }
 
-  final staleDays = int.tryParse(args.option('stale-days')!);
-  if (staleDays == null || staleDays <= 0) {
+  final cliStaleDays = int.tryParse(args.option('stale-days')!);
+  if (cliStaleDays == null || cliStaleDays <= 0) {
     stderr.writeln('--stale-days must be a positive integer.');
     return 2;
   }
 
-  final options = DoctorOptions(
-    ignore: args.multiOption('ignore').toSet(),
-    staleDays: staleDays,
-    offline: args.flag('offline'),
-  );
+  final root = Directory(args.option('path')!);
 
   try {
-    final report =
-        await Doctor().diagnose(Directory(args.option('path')!), options);
+    // CLI flags win over the config file; ignore lists are merged.
+    final config = DoctorConfig.load(root);
+    final options = DoctorOptions(
+      ignore: {...config.ignore, ...args.multiOption('ignore')},
+      staleDays: args.wasParsed('stale-days')
+          ? cliStaleDays
+          : config.staleDays ?? cliStaleDays,
+      offline: args.flag('offline'),
+    );
+    final failOnStale =
+        args.flag('fail-on-stale') || (config.failOnStale ?? false);
+
+    final report = await Doctor().diagnose(root, options);
     if (args.flag('json')) {
       stdout
           .writeln(const JsonEncoder.withIndent('  ').convert(report.toJson()));
@@ -84,7 +92,7 @@ Future<int> run(List<String> arguments) async {
         report.toGithubAnnotations().forEach(stdout.writeln);
       }
     }
-    return report.hasProblems(failOnStale: args.flag('fail-on-stale')) ? 1 : 0;
+    return report.hasProblems(failOnStale: failOnStale) ? 1 : 0;
   } on PubspecNotFoundException catch (e) {
     stderr.writeln(e);
     return 2;
