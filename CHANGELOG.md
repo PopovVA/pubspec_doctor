@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.3.1...v0.4.0) (2026-07-03)
+
+
+### Features
+
+* promotion checks and SDK compatibility warnings ([#9](https://github.com/PopovVA/pubspec_doctor/issues/9)) ([4d641ab](https://github.com/PopovVA/pubspec_doctor/commit/4d641abfa502223938ecb17816763026fe5fb46c))
+
 ## [0.3.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.3.0...v0.3.1) (2026-07-03)
 
 

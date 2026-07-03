@@ -2,7 +2,7 @@ name: pubspec_doctor
 description: >-
   CLI that audits pubspec.yaml dependencies: finds unused packages and flags
   discontinued or stale ones using the pub.dev API.
-version: 0.3.1
+version: 0.4.0
 repository: https://github.com/PopovVA/pubspec_doctor
 
 environment:
