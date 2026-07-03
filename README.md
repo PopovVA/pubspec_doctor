@@ -6,10 +6,15 @@ CLI that audits the dependencies in your `pubspec.yaml`:
 
 - **Unused** — declared in `dependencies` / `dev_dependencies` but never
   referenced in the project.
+- **Wrongly promoted** — a `dependencies` entry only used outside runtime
+  code (should be a dev_dependency), or a `dev_dependencies` entry used in
+  `lib/`, `bin/` or `web/` (should be a regular dependency).
 - **Discontinued** — flagged as discontinued on pub.dev, including the
   suggested replacement package when the author provided one.
 - **Stale** — the latest release is older than a threshold (2 years by
   default), a common sign of an unmaintained package.
+- **SDK-incompatible** *(informational)* — the latest release requires a
+  newer Dart SDK than you are running, so upgrades are silently blocked.
 
 Existing tools cover these separately (`dependency_validator` for unused,
 `dart pub outdated` shows discontinued); `pubspec_doctor` gives you a single
@@ -61,8 +66,11 @@ Stale packages (no release in a long time):
 | Code | Meaning |
 | --- | --- |
 | `0` | No problems found. |
-| `1` | Unused or discontinued packages found (stale too, with `--fail-on-stale`). |
+| `1` | Unused, wrongly promoted or discontinued packages found (stale too, with `--fail-on-stale`). |
 | `2` | Usage or runtime error (e.g. no `pubspec.yaml`). |
+
+SDK-incompatible latest releases are reported as warnings and never affect
+the exit code.
 
 ## CI integration
 
@@ -139,9 +147,8 @@ config `ignore` or via `--ignore`.
 
 ## Roadmap
 
-- Under-/over-promotion checks (dep that should be a dev_dependency and
-  vice versa).
-- Dart SDK compatibility check for the latest release of each dependency.
+- Pub workspaces / monorepo support.
+- Watch for `path`/`git` dependency overrides left behind before release.
 
 ## License
 

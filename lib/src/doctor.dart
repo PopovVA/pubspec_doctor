@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:pub_semver/pub_semver.dart';
+
 import 'codegen_detector.dart';
 import 'pub_api_client.dart';
 import 'pubspec_info.dart';
@@ -27,21 +29,27 @@ class DoctorOptions {
 /// package references, and queries pub.dev for the health of each hosted
 /// dependency.
 class Doctor {
-  Doctor({UsageScanner? scanner, PubApiClient? apiClient, DateTime? now})
-      : _scanner = scanner ?? UsageScanner(),
+  Doctor({
+    UsageScanner? scanner,
+    PubApiClient? apiClient,
+    DateTime? now,
+    String? sdkVersion,
+  })  : _scanner = scanner ?? UsageScanner(),
         _apiClient = apiClient,
-        _now = now;
+        _now = now,
+        _sdkVersion = sdkVersion;
 
   final UsageScanner _scanner;
   final PubApiClient? _apiClient;
   final DateTime? _now;
+  final String? _sdkVersion;
 
   static const _concurrentRequests = 8;
 
   Future<Report> diagnose(Directory root, DoctorOptions options) async {
     final pubspec = PubspecInfo.load(root);
-    final used = _scanner.scan(root, pubspecRaw: pubspec.raw)
-      ..add(pubspec.name);
+    final usage = _scanner.scan(root, pubspecRaw: pubspec.raw);
+    final used = {...usage.all, pubspec.name};
     used.addAll(CodegenDetector().implicitlyUsed(
       declared: {...pubspec.dependencies, ...pubspec.devDependencies},
       referenced: used,
@@ -53,11 +61,24 @@ class Doctor {
         .toList()
       ..sort();
 
+    final overPromoted = pubspec.dependencies
+        .where((d) =>
+            used.contains(d) &&
+            !usage.public.contains(d) &&
+            !options.ignore.contains(d))
+        .toList()
+      ..sort();
+    final underPromoted = pubspec.devDependencies
+        .where((d) => usage.public.contains(d) && !options.ignore.contains(d))
+        .toList()
+      ..sort();
+
     final checked = {...pubspec.dependencies, ...pubspec.devDependencies}
         .difference(options.ignore);
 
     final discontinued = <PackageHealth>[];
     final stale = <StalePackage>[];
+    final sdkIncompatible = <SdkIncompatiblePackage>[];
     final errors = <HealthCheckError>[];
 
     if (!options.offline) {
@@ -66,6 +87,8 @@ class Doctor {
           .toList()
         ..sort();
       final now = _now ?? DateTime.now();
+      final currentSdk =
+          Version.parse((_sdkVersion ?? Platform.version).split(' ').first);
       final client = _apiClient ?? PubApiClient();
       try {
         for (var i = 0; i < targets.length; i += _concurrentRequests) {
@@ -77,6 +100,13 @@ class Doctor {
               final age = now.difference(health.publishedAt).inDays;
               if (!health.isDiscontinued && age > options.staleDays) {
                 stale.add(StalePackage(health: health, ageDays: age));
+              }
+              if (!health.isDiscontinued &&
+                  !_allowsSdk(health.sdkConstraint, currentSdk)) {
+                sdkIncompatible.add(SdkIncompatiblePackage(
+                  health: health,
+                  currentSdk: currentSdk.toString(),
+                ));
               }
             } on PubApiException catch (e) {
               errors.add(
@@ -94,6 +124,7 @@ class Doctor {
       }
       discontinued.sort((a, b) => a.name.compareTo(b.name));
       stale.sort((a, b) => a.health.name.compareTo(b.health.name));
+      sdkIncompatible.sort((a, b) => a.health.name.compareTo(b.health.name));
       errors.sort((a, b) => a.package.compareTo(b.package));
     }
 
@@ -101,11 +132,25 @@ class Doctor {
       packageName: pubspec.name,
       unusedDependencies: unusedIn(pubspec.dependencies),
       unusedDevDependencies: unusedIn(pubspec.devDependencies),
+      overPromoted: overPromoted,
+      underPromoted: underPromoted,
       discontinued: discontinued,
       stale: stale,
+      sdkIncompatible: sdkIncompatible,
       errors: errors,
       checkedCount: checked.length,
       healthCheckSkipped: options.offline,
     );
+  }
+
+  /// True when [constraint] admits [sdk]. Missing or unparseable
+  /// constraints count as compatible — err on the quiet side.
+  bool _allowsSdk(String? constraint, Version sdk) {
+    if (constraint == null) return true;
+    try {
+      return VersionConstraint.parse(constraint).allows(sdk);
+    } on FormatException {
+      return true;
+    }
   }
 }

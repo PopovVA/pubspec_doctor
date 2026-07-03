@@ -24,12 +24,20 @@ Map<String, Object?> pubInfo(
   bool discontinued = false,
   String? replacedBy,
   String published = '2026-01-01T00:00:00Z',
+  String? sdk,
 }) =>
     {
       'name': name,
       if (discontinued) 'isDiscontinued': true,
       if (replacedBy != null) 'replacedBy': replacedBy,
-      'latest': {'version': '1.0.0', 'published': published},
+      'latest': {
+        'version': '1.0.0',
+        'published': published,
+        if (sdk != null)
+          'pubspec': {
+            'environment': {'sdk': sdk},
+          },
+      },
     };
 
 void main() {
@@ -89,7 +97,84 @@ import 'package:missing_pkg/missing_pkg.dart';
     expect(report.discontinued.single.replacedBy, 'alive_pkg');
     expect(report.stale.map((s) => s.health.name), ['old_pkg']);
     expect(report.errors.map((e) => e.package), ['missing_pkg']);
+    // missing_pkg is a dev_dependency imported from lib/.
+    expect(report.underPromoted, ['missing_pkg']);
     expect(report.hasProblems(failOnStale: false), isTrue);
+  });
+
+  test('detects over- and under-promoted dependencies', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  runtime_pkg: ^1.0.0
+  test_only_pkg: ^1.0.0
+dev_dependencies:
+  dev_in_lib_pkg: ^1.0.0
+  proper_dev_pkg: ^1.0.0
+''');
+    write('lib/main.dart', '''
+import 'package:runtime_pkg/runtime_pkg.dart';
+import 'package:dev_in_lib_pkg/dev_in_lib_pkg.dart';
+''');
+    write('test/main_test.dart', '''
+import 'package:test_only_pkg/test_only_pkg.dart';
+import 'package:proper_dev_pkg/proper_dev_pkg.dart';
+''');
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    expect(report.overPromoted, ['test_only_pkg']);
+    expect(report.underPromoted, ['dev_in_lib_pkg']);
+    expect(report.unusedDependencies, isEmpty);
+    expect(report.hasProblems(failOnStale: false), isTrue);
+  });
+
+  test('codegen-only dependencies are over-promoted, not runtime deps',
+      () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  freezed_annotation: ^3.0.0
+  freezed: ^3.0.0
+''');
+    write('lib/model.dart',
+        "import 'package:freezed_annotation/freezed_annotation.dart';");
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    // freezed is used (via its companion) but only at build time.
+    expect(report.unusedDependencies, isEmpty);
+    expect(report.overPromoted, ['freezed']);
+  });
+
+  test('flags latest releases incompatible with the current SDK', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  future_pkg: ^1.0.0
+  fine_pkg: ^1.0.0
+''');
+    write('lib/main.dart', '''
+import 'package:future_pkg/future_pkg.dart';
+import 'package:fine_pkg/fine_pkg.dart';
+''');
+
+    final doctor = Doctor(
+      apiClient: fakePubApi({
+        'future_pkg': pubInfo('future_pkg', sdk: '>=3.9.0 <4.0.0'),
+        'fine_pkg': pubInfo('fine_pkg', sdk: '>=3.0.0 <4.0.0'),
+      }),
+      now: DateTime.utc(2026, 7, 1),
+      sdkVersion: '3.5.0',
+    );
+    final report = await doctor.diagnose(root, DoctorOptions());
+
+    expect(report.sdkIncompatible.map((s) => s.health.name), ['future_pkg']);
+    expect(report.sdkIncompatible.single.currentSdk, '3.5.0');
+    // SDK incompatibility is informational: it never fails the build.
+    expect(report.hasProblems(failOnStale: true), isFalse);
   });
 
   test('ignored packages are excluded from all checks', () async {
