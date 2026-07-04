@@ -19,8 +19,9 @@ jobs:
       - run: dart test
       # Dogfood: audit our own pubspec; fails the build on findings.
       - run: dart run bin/pubspec_doctor.dart --fail-on-stale
-      # Lower-bound check: the code must analyze and pass tests against the
-      # oldest versions the constraints admit (pub.dev scores this).
+      # Lower-bound check, mirroring pub.dev's downgrade analysis: the code
+      # must still analyze against the oldest versions the constraints
+      # admit. (No `dart test` here — an old test runner is not guaranteed
+      # to work on a newer SDK.)
       - run: dart pub downgrade
       - run: dart analyze --fatal-infos
-      - run: dart test
