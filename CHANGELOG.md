@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.5.1...v0.6.0) (2026-07-04)
+
+
+### Features
+
+* warn when a declared constraint does not allow the latest release ([#16](https://github.com/PopovVA/pubspec_doctor/issues/16)) ([1ac2621](https://github.com/PopovVA/pubspec_doctor/commit/1ac26213bd4705c47a59c8280fb7c24f6512fea0))
+
 ## [0.5.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.5.0...v0.5.1) (2026-07-04)
 
 
