@@ -6,6 +6,7 @@ import 'package:args/args.dart';
 import 'config.dart';
 import 'doctor.dart';
 import 'pubspec_info.dart';
+import 'workspace.dart';
 
 /// Exit codes: 0 — healthy, 1 — problems found, 2 — usage or runtime error.
 Future<int> run(List<String> arguments) async {
@@ -69,30 +70,54 @@ Future<int> run(List<String> arguments) async {
   final root = Directory(args.option('path')!);
 
   try {
-    // CLI flags win over the config file; ignore lists are merged.
-    final config = DoctorConfig.load(root);
-    final options = DoctorOptions(
-      ignore: {...config.ignore, ...args.multiOption('ignore')},
-      staleDays: args.wasParsed('stale-days')
-          ? cliStaleDays
-          : config.staleDays ?? cliStaleDays,
-      offline: args.flag('offline'),
-    );
-    final failOnStale =
-        args.flag('fail-on-stale') || (config.failOnStale ?? false);
+    // CLI flags win over config files; ignore lists are merged. Workspace
+    // members inherit the root config, with their own config on top.
+    final rootConfig = DoctorConfig.load(root);
+    DoctorOptions optionsFor(Directory dir) {
+      final config = dir.path == root.path
+          ? rootConfig
+          : rootConfig.mergedWith(DoctorConfig.load(dir));
+      return DoctorOptions(
+        ignore: {...config.ignore, ...args.multiOption('ignore')},
+        staleDays: args.wasParsed('stale-days')
+            ? cliStaleDays
+            : config.staleDays ?? cliStaleDays,
+        offline: args.flag('offline'),
+      );
+    }
 
-    final report = await Doctor().diagnose(root, options);
+    final failOnStale =
+        args.flag('fail-on-stale') || (rootConfig.failOnStale ?? false);
+
+    final results = await WorkspaceDoctor().diagnose(root, optionsFor);
+    final isWorkspace = results.length > 1;
+
     if (args.flag('json')) {
-      stdout
-          .writeln(const JsonEncoder.withIndent('  ').convert(report.toJson()));
+      final json = isWorkspace
+          ? {
+              'workspace': [
+                for (final r in results) {'path': r.path, ...r.report.toJson()},
+              ],
+            }
+          : results.single.report.toJson();
+      stdout.writeln(const JsonEncoder.withIndent('  ').convert(json));
     } else {
-      stdout.writeln(report.toConsole());
-      // Inside GitHub Actions, also emit findings as PR annotations.
-      if (Platform.environment['GITHUB_ACTIONS'] == 'true') {
-        report.toGithubAnnotations().forEach(stdout.writeln);
+      final annotate = Platform.environment['GITHUB_ACTIONS'] == 'true';
+      for (final result in results) {
+        if (isWorkspace) stdout.writeln('── ${result.path} ──');
+        stdout.writeln(result.report.toConsole());
+        if (isWorkspace) stdout.writeln();
+        // Inside GitHub Actions, also emit findings as PR annotations.
+        if (annotate) {
+          result.report
+              .toGithubAnnotations(pubspecFile: result.pubspecFile)
+              .forEach(stdout.writeln);
+        }
       }
     }
-    return report.hasProblems(failOnStale: failOnStale) ? 1 : 0;
+    return results.any((r) => r.report.hasProblems(failOnStale: failOnStale))
+        ? 1
+        : 0;
   } on PubspecNotFoundException catch (e) {
     stderr.writeln(e);
     return 2;

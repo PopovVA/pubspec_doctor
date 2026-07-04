@@ -9,3 +9,4 @@ export 'src/pub_api_client.dart';
 export 'src/pubspec_info.dart';
 export 'src/report.dart';
 export 'src/usage_scanner.dart';
+export 'src/workspace.dart';

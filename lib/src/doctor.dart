@@ -13,6 +13,8 @@ class DoctorOptions {
     this.ignore = const {},
     this.staleDays = 730,
     this.offline = false,
+    this.localPackages = const {},
+    this.excludeScanPaths = const {},
   });
 
   /// Packages excluded from every check.
@@ -23,6 +25,26 @@ class DoctorOptions {
 
   /// Skip the pub.dev health check entirely.
   final bool offline;
+
+  /// Packages that resolve locally (workspace members) — skipped by the
+  /// pub.dev health check.
+  final Set<String> localPackages;
+
+  /// Directories excluded from the usage scan (workspace member roots
+  /// when diagnosing the workspace root).
+  final Set<String> excludeScanPaths;
+
+  DoctorOptions copyWith({
+    Set<String>? localPackages,
+    Set<String>? excludeScanPaths,
+  }) =>
+      DoctorOptions(
+        ignore: ignore,
+        staleDays: staleDays,
+        offline: offline,
+        localPackages: localPackages ?? this.localPackages,
+        excludeScanPaths: excludeScanPaths ?? this.excludeScanPaths,
+      );
 }
 
 /// Orchestrates the checks: parses the pubspec, scans the project for
@@ -48,7 +70,11 @@ class Doctor {
 
   Future<Report> diagnose(Directory root, DoctorOptions options) async {
     final pubspec = PubspecInfo.load(root);
-    final usage = _scanner.scan(root, pubspecRaw: pubspec.raw);
+    final usage = _scanner.scan(
+      root,
+      pubspecRaw: pubspec.raw,
+      excludePaths: options.excludeScanPaths,
+    );
     final used = {...usage.all, pubspec.name};
     used.addAll(CodegenDetector().implicitlyUsed(
       declared: {...pubspec.dependencies, ...pubspec.devDependencies},
@@ -84,6 +110,7 @@ class Doctor {
     if (!options.offline) {
       final targets = pubspec.hostedDependencies
           .difference(options.ignore)
+          .difference(options.localPackages)
           .toList()
         ..sort();
       final now = _now ?? DateTime.now();
@@ -134,6 +161,9 @@ class Doctor {
       unusedDevDependencies: unusedIn(pubspec.devDependencies),
       overPromoted: overPromoted,
       underPromoted: underPromoted,
+      overrides: pubspec.overrides
+          .where((o) => !options.ignore.contains(o.name))
+          .toList(),
       discontinued: discontinued,
       stale: stale,
       sdkIncompatible: sdkIncompatible,

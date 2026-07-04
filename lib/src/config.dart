@@ -23,6 +23,15 @@ class DoctorConfig {
   final int? staleDays;
   final bool? failOnStale;
 
+  /// This config with [other] layered on top: scalar options from [other]
+  /// win, ignore lists are merged. Used for workspace members, whose own
+  /// config refines the workspace root config.
+  DoctorConfig mergedWith(DoctorConfig other) => DoctorConfig(
+        ignore: {...ignore, ...other.ignore},
+        staleDays: other.staleDays ?? staleDays,
+        failOnStale: other.failOnStale ?? failOnStale,
+      );
+
   static const fileName = 'pubspec_doctor.yaml';
 
   static DoctorConfig load(Directory root) {

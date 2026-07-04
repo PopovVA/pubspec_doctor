@@ -15,6 +15,14 @@ CLI that audits the dependencies in your `pubspec.yaml`:
   default), a common sign of an unmaintained package.
 - **SDK-incompatible** *(informational)* — the latest release requires a
   newer Dart SDK than you are running, so upgrades are silently blocked.
+- **Leftover overrides** — `dependency_overrides` entries in `pubspec.yaml`
+  or `pubspec_overrides.yaml`. Path and git overrides fail the run (they
+  must not survive to a release); version pins are warnings.
+
+Pub workspaces are supported out of the box: when the pubspec has a
+`workspace:` section, every member package is diagnosed (workspace members
+are excluded from the pub.dev health check, and member configs refine the
+root config).
 
 Existing tools cover these separately (`dependency_validator` for unused,
 `dart pub outdated` shows discontinued); `pubspec_doctor` gives you a single
@@ -66,7 +74,7 @@ Stale packages (no release in a long time):
 | Code | Meaning |
 | --- | --- |
 | `0` | No problems found. |
-| `1` | Unused, wrongly promoted or discontinued packages found (stale too, with `--fail-on-stale`). |
+| `1` | Unused, wrongly promoted or discontinued packages, or path/git overrides found (stale too, with `--fail-on-stale`). |
 | `2` | Usage or runtime error (e.g. no `pubspec.yaml`). |
 
 SDK-incompatible latest releases are reported as warnings and never affect
@@ -147,8 +155,7 @@ config `ignore` or via `--ignore`.
 
 ## Roadmap
 
-- Pub workspaces / monorepo support.
-- Watch for `path`/`git` dependency overrides left behind before release.
+Suggestions welcome — [file an issue](https://github.com/PopovVA/pubspec_doctor/issues).
 
 ## License
 
