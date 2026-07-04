@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.4.0...v0.5.0) (2026-07-04)
+
+
+### Features
+
+* pub workspaces support and leftover dependency_overrides check ([#11](https://github.com/PopovVA/pubspec_doctor/issues/11)) ([31c6868](https://github.com/PopovVA/pubspec_doctor/commit/31c68684a97f41ae49bdcc59b3914697fa161525))
+
 ## [0.4.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.3.1...v0.4.0) (2026-07-03)
 
 
