@@ -15,6 +15,9 @@ CLI that audits the dependencies in your `pubspec.yaml`:
   default), a common sign of an unmaintained package.
 - **SDK-incompatible** *(informational)* — the latest release requires a
   newer Dart SDK than you are running, so upgrades are silently blocked.
+- **Outdated constraint** *(informational)* — the declared constraint does
+  not allow the latest release (e.g. `^0.13.0` while pub.dev is at
+  `1.2.0`), which usually means a package was added at an old major.
 - **Leftover overrides** — `dependency_overrides` entries in `pubspec.yaml`
   or `pubspec_overrides.yaml`. Path and git overrides fail the run (they
   must not survive to a release); version pins are warnings.
@@ -77,7 +80,7 @@ Stale packages (no release in a long time):
 | `1` | Unused, wrongly promoted or discontinued packages, or path/git overrides found (stale too, with `--fail-on-stale`). |
 | `2` | Usage or runtime error (e.g. no `pubspec.yaml`). |
 
-SDK-incompatible latest releases are reported as warnings and never affect
+SDK-incompatible latest releases and outdated constraints are reported as warnings and never affect
 the exit code.
 
 ## CI integration
