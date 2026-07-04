@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.6.0...v0.7.0) (2026-07-04)
+
+
+### Features
+
+* --fix and --fix-outdated apply findings to pubspec.yaml ([#18](https://github.com/PopovVA/pubspec_doctor/issues/18)) ([389e524](https://github.com/PopovVA/pubspec_doctor/commit/389e524face7f323d7fcf56042dea6a5f44195b9))
+
 ## [0.6.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.5.1...v0.6.0) (2026-07-04)
 
 
