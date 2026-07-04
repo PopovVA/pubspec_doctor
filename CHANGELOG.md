@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.5.0...v0.5.1) (2026-07-04)
+
+
+### Bug Fixes
+
+* tighten dependency lower bounds for downgrade analysis ([#13](https://github.com/PopovVA/pubspec_doctor/issues/13)) ([484a3f9](https://github.com/PopovVA/pubspec_doctor/commit/484a3f9859177778861e1663c93c0a42da450853))
+
 ## [0.5.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.4.0...v0.5.0) (2026-07-04)
 
 
