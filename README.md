@@ -71,6 +71,20 @@ Stale packages (no release in a long time):
 | `--offline` | Skip pub.dev health checks; unused analysis only. |
 | `--fail-on-stale` | Non-zero exit code when stale packages are found. |
 | `--json` | Machine-readable JSON report. |
+| `--fix` | Apply safe fixes to `pubspec.yaml` (see below). |
+| `--fix-outdated` | Also bump constraints that block the latest release. |
+
+### Fixing what it finds
+
+`--fix` edits `pubspec.yaml` in place, preserving comments and formatting:
+unused dependencies are removed, wrongly promoted ones move to the right
+section, and path/git `dependency_overrides` are deleted. Discontinued and
+stale packages are never touched — replacing a package is your call.
+
+`--fix-outdated` additionally rewrites constraints that do not allow the
+latest release (e.g. `^0.13.0` becomes `^1.6.0`). That can pull in breaking
+changes, which is why it is a separate flag. After any fix, review the git
+diff, then run `dart pub get` and your tests.
 
 ### Exit codes
 

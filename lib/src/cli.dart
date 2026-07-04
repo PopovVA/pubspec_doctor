@@ -5,6 +5,7 @@ import 'package:args/args.dart';
 
 import 'config.dart';
 import 'doctor.dart';
+import 'fixer.dart';
 import 'pubspec_info.dart';
 import 'workspace.dart';
 
@@ -38,6 +39,18 @@ Future<int> run(List<String> arguments) async {
       help: 'Also return a non-zero exit code when stale packages are found.',
     )
     ..addFlag('json', negatable: false, help: 'Output the report as JSON.')
+    ..addFlag(
+      'fix',
+      negatable: false,
+      help: 'Apply safe fixes to pubspec.yaml: remove unused dependencies, '
+          'move wrongly promoted ones, delete path/git overrides.',
+    )
+    ..addFlag(
+      'fix-outdated',
+      negatable: false,
+      help: 'Also bump constraints that do not allow the latest release '
+          '(may pull in breaking changes — review the diff).',
+    )
     ..addFlag(
       'help',
       abbr: 'h',
@@ -115,6 +128,34 @@ Future<int> run(List<String> arguments) async {
         }
       }
     }
+    if (args.flag('fix') || args.flag('fix-outdated')) {
+      final fixer = Fixer();
+      var fixedAny = false;
+      for (final result in results) {
+        final dir = result.path == '.'
+            ? root
+            : Directory('${root.path}${Platform.pathSeparator}${result.path}');
+        final applied = fixer.apply(
+          dir,
+          result.report,
+          safe: args.flag('fix'),
+          outdated: args.flag('fix-outdated'),
+        );
+        if (applied.isEmpty) continue;
+        fixedAny = true;
+        stdout.writeln(isWorkspace
+            ? 'Fixed ${result.pubspecFile}:'
+            : 'Fixed pubspec.yaml:');
+        for (final fix in applied) {
+          stdout.writeln('  * $fix');
+        }
+      }
+      if (fixedAny) {
+        stdout.writeln(
+            'Review the diff, then run `dart pub get` and your tests.');
+      }
+    }
+
     return results.any((r) => r.report.hasProblems(failOnStale: failOnStale))
         ? 1
         : 0;
