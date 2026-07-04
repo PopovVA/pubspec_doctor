@@ -75,4 +75,18 @@ pubspec_doctor:
     write('pubspec_doctor.yaml', 'stale_days: -5\n');
     expect(() => DoctorConfig.load(root), throwsFormatException);
   });
+
+  test('mergedWith layers the member config over the root config', () {
+    final rootConfig = DoctorConfig(
+      ignore: {'a'},
+      staleDays: 100,
+      failOnStale: true,
+    );
+    final member = DoctorConfig(ignore: {'b'}, staleDays: 200);
+
+    final merged = rootConfig.mergedWith(member);
+    expect(merged.ignore, {'a', 'b'});
+    expect(merged.staleDays, 200);
+    expect(merged.failOnStale, isTrue);
+  });
 }

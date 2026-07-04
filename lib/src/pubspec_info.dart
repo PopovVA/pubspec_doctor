@@ -2,6 +2,31 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
+/// A single entry under `dependency_overrides:`, either in `pubspec.yaml`
+/// or in `pubspec_overrides.yaml`.
+class DependencyOverride {
+  DependencyOverride({
+    required this.name,
+    required this.source,
+    required this.origin,
+  });
+
+  final String name;
+
+  /// Where the override points: `path`, `git`, `sdk` or `version`.
+  final String source;
+
+  /// The file the override was found in.
+  final String origin;
+
+  /// Path and git overrides must not survive to a release; a version pin
+  /// is sometimes intentional.
+  bool get blocksRelease => source == 'path' || source == 'git';
+
+  Map<String, Object?> toJson() =>
+      {'name': name, 'source': source, 'origin': origin};
+}
+
 /// Parsed view of a project's `pubspec.yaml`, limited to what the doctor
 /// needs: dependency names grouped by section and by source.
 class PubspecInfo {
@@ -12,6 +37,8 @@ class PubspecInfo {
     required this.sdkDependencies,
     required this.hostedDependencies,
     required this.raw,
+    this.workspacePaths = const [],
+    this.overrides = const [],
   });
 
   /// The package name declared in `pubspec.yaml`.
@@ -35,15 +62,29 @@ class PubspecInfo {
   /// `packages/<name>/...` asset and font references.
   final String raw;
 
+  /// Member package paths from a `workspace:` section (pub workspaces).
+  /// Empty for regular packages.
+  final List<String> workspacePaths;
+
+  /// `dependency_overrides:` entries from both `pubspec.yaml` and
+  /// `pubspec_overrides.yaml`.
+  final List<DependencyOverride> overrides;
+
   static PubspecInfo load(Directory root) {
     final file = File('${root.path}${Platform.pathSeparator}pubspec.yaml');
     if (!file.existsSync()) {
       throw PubspecNotFoundException(file.path);
     }
-    return parse(file.readAsStringSync());
+    final overridesFile =
+        File('${root.path}${Platform.pathSeparator}pubspec_overrides.yaml');
+    return parse(
+      file.readAsStringSync(),
+      overridesContent:
+          overridesFile.existsSync() ? overridesFile.readAsStringSync() : null,
+    );
   }
 
-  static PubspecInfo parse(String content) {
+  static PubspecInfo parse(String content, {String? overridesContent}) {
     final doc = loadYaml(content);
     if (doc is! YamlMap) {
       throw const FormatException('pubspec.yaml is not a YAML map');
@@ -78,6 +119,16 @@ class PubspecInfo {
       return names;
     }
 
+    final workspace = doc['workspace'];
+    final overrides = [
+      ..._parseOverrides(doc['dependency_overrides'], 'pubspec.yaml'),
+      if (overridesContent != null)
+        ..._parseOverrides(
+          (loadYaml(overridesContent) as YamlMap?)?['dependency_overrides'],
+          'pubspec_overrides.yaml',
+        ),
+    ];
+
     return PubspecInfo(
       name: name,
       dependencies: section('dependencies'),
@@ -85,7 +136,32 @@ class PubspecInfo {
       sdkDependencies: sdkDeps,
       hostedDependencies: hostedDeps,
       raw: content,
+      workspacePaths: workspace is YamlList
+          ? workspace.map((p) => p.toString()).toList()
+          : const [],
+      overrides: overrides,
     );
+  }
+
+  static List<DependencyOverride> _parseOverrides(Object? node, String origin) {
+    if (node is! YamlMap) return const [];
+    String sourceOf(Object? spec) {
+      if (spec is YamlMap) {
+        if (spec.containsKey('path')) return 'path';
+        if (spec.containsKey('git')) return 'git';
+        if (spec.containsKey('sdk')) return 'sdk';
+      }
+      return 'version';
+    }
+
+    return [
+      for (final entry in node.entries)
+        DependencyOverride(
+          name: entry.key.toString(),
+          source: sourceOf(entry.value),
+          origin: origin,
+        ),
+    ];
   }
 }
 

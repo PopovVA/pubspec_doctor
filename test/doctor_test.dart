@@ -271,6 +271,56 @@ import 'package:old_pkg/old_pkg.dart';
     expect(annotations[2], contains('old_pkg'));
   });
 
+  test('reports dependency overrides; only path/git ones fail', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  http: ^1.0.0
+dependency_overrides:
+  pinned_pkg: 1.2.3
+''');
+    write('pubspec_overrides.yaml', '''
+dependency_overrides:
+  local_pkg:
+    path: ../local_pkg
+''');
+    write('lib/main.dart', "import 'package:http/http.dart';");
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    expect(report.overrides.map((o) => o.name).toSet(),
+        {'pinned_pkg', 'local_pkg'});
+    expect(report.hasProblems(failOnStale: false), isTrue);
+
+    final annotations = report.toGithubAnnotations();
+    expect(
+      annotations.where((a) => a.contains('local_pkg')).single,
+      startsWith('::error file=pubspec_overrides.yaml'),
+    );
+    expect(
+      annotations.where((a) => a.contains('pinned_pkg')).single,
+      startsWith('::warning'),
+    );
+  });
+
+  test('version-only overrides do not fail the run', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  http: ^1.0.0
+dependency_overrides:
+  pinned_pkg: 1.2.3
+''');
+    write('lib/main.dart', "import 'package:http/http.dart';");
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    expect(report.overrides.single.name, 'pinned_pkg');
+    expect(report.hasProblems(failOnStale: true), isFalse);
+  });
+
   test('report serializes to JSON', () async {
     write('pubspec.yaml', '''
 name: my_app

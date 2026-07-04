@@ -1,4 +1,5 @@
 import 'pub_api_client.dart';
+import 'pubspec_info.dart';
 
 /// A package whose latest release is older than the configured threshold.
 class StalePackage {
@@ -31,6 +32,7 @@ class Report {
     required this.unusedDevDependencies,
     required this.overPromoted,
     required this.underPromoted,
+    required this.overrides,
     required this.discontinued,
     required this.stale,
     required this.sdkIncompatible,
@@ -50,6 +52,10 @@ class Report {
   /// In `dev_dependencies` but used in runtime code (`lib/`, `bin/`,
   /// `web/`) — should be a regular dependency.
   final List<String> underPromoted;
+
+  /// `dependency_overrides` entries. Path and git overrides fail the run
+  /// (left-behind development state); version pins are warnings.
+  final List<DependencyOverride> overrides;
 
   final List<PackageHealth> discontinued;
   final List<StalePackage> stale;
@@ -75,6 +81,7 @@ class Report {
   bool hasProblems({required bool failOnStale}) =>
       hasUnused ||
       hasPromotionIssues ||
+      overrides.any((o) => o.blocksRelease) ||
       discontinued.isNotEmpty ||
       (failOnStale && stale.isNotEmpty);
 
@@ -85,6 +92,7 @@ class Report {
         'unusedDevDependencies': unusedDevDependencies,
         'overPromoted': overPromoted,
         'underPromoted': underPromoted,
+        'overrides': overrides.map((o) => o.toJson()).toList(),
         'discontinued': discontinued.map((p) => p.toJson()).toList(),
         'stale': stale
             .map((s) => {...s.health.toJson(), 'ageDays': s.ageDays})
@@ -99,8 +107,8 @@ class Report {
       };
 
   /// GitHub Actions workflow commands (`::error::` / `::warning::`) that
-  /// surface findings as annotations on `pubspec.yaml` in the PR UI.
-  List<String> toGithubAnnotations() {
+  /// surface findings as annotations on [pubspecFile] in the PR UI.
+  List<String> toGithubAnnotations({String pubspecFile = 'pubspec.yaml'}) {
     String esc(String message) => message
         .replaceAll('%', '%25')
         .replaceAll('\r', '%0D')
@@ -108,27 +116,33 @@ class Report {
 
     return [
       for (final name in unusedDependencies)
-        '::error file=pubspec.yaml,title=Unused dependency::'
+        '::error file=$pubspecFile,title=Unused dependency::'
             '${esc('$name is declared in dependencies but never used')}',
       for (final name in unusedDevDependencies)
-        '::error file=pubspec.yaml,title=Unused dev_dependency::'
+        '::error file=$pubspecFile,title=Unused dev_dependency::'
             '${esc('$name is declared in dev_dependencies but never used')}',
       for (final name in overPromoted)
-        '::error file=pubspec.yaml,title=Over-promoted dependency::'
+        '::error file=$pubspecFile,title=Over-promoted dependency::'
             '${esc('$name is only used outside runtime code — move it to dev_dependencies')}',
       for (final name in underPromoted)
-        '::error file=pubspec.yaml,title=Under-promoted dependency::'
+        '::error file=$pubspecFile,title=Under-promoted dependency::'
             '${esc('$name is used in runtime code — move it from dev_dependencies to dependencies')}',
+      for (final override in overrides.where((o) => o.blocksRelease))
+        '::error file=${override.origin == 'pubspec.yaml' ? pubspecFile : override.origin},title=Dependency override left behind::'
+            '${esc('${override.name} is overridden with a ${override.source} dependency — remove before release')}',
+      for (final override in overrides.where((o) => !o.blocksRelease))
+        '::warning file=${override.origin == 'pubspec.yaml' ? pubspecFile : override.origin},title=Dependency override::'
+            '${esc('${override.name} is pinned via dependency_overrides (${override.source})')}',
       for (final package in discontinued)
-        '::error file=pubspec.yaml,title=Discontinued package::'
+        '::error file=$pubspecFile,title=Discontinued package::'
             '${esc('${package.name} is discontinued on pub.dev'
                 '${package.replacedBy == null ? '' : ', suggested replacement: ${package.replacedBy}'}')}',
       for (final entry in stale)
-        '::warning file=pubspec.yaml,title=Stale package::'
+        '::warning file=$pubspecFile,title=Stale package::'
             '${esc('${entry.health.name} has had no release for ${entry.ageDays} days '
                 '(latest ${entry.health.latestVersion})')}',
       for (final entry in sdkIncompatible)
-        '::warning file=pubspec.yaml,title=SDK-incompatible latest release::'
+        '::warning file=$pubspecFile,title=SDK-incompatible latest release::'
             '${esc('${entry.health.name} ${entry.health.latestVersion} requires Dart '
                 '"${entry.health.sdkConstraint}" but the current SDK is ${entry.currentSdk} — upgrades are blocked')}',
     ];
@@ -167,6 +181,13 @@ class Report {
         underPromoted,
       );
     }
+    if (overrides.isNotEmpty) {
+      section(
+        'Dependency overrides:',
+        overrides.map((o) => '${o.name} (${o.source} override in '
+            '${o.origin})${o.blocksRelease ? ' — remove before release' : ''}'),
+      );
+    }
     if (discontinued.isNotEmpty) {
       section(
         'Discontinued packages:',
@@ -203,6 +224,7 @@ class Report {
     }
     if (!hasUnused &&
         !hasPromotionIssues &&
+        overrides.isEmpty &&
         discontinued.isEmpty &&
         stale.isEmpty &&
         sdkIncompatible.isEmpty &&

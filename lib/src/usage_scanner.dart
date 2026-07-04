@@ -30,11 +30,16 @@ class UsageScanner {
   static const _skippedDirs = {'.dart_tool', 'build', '.git'};
   static const _publicDirs = {'lib', 'bin', 'web'};
 
-  UsageResult scan(Directory root, {required String pubspecRaw}) {
+  UsageResult scan(
+    Directory root, {
+    required String pubspecRaw,
+    Set<String> excludePaths = const {},
+  }) {
     final public = <String>{};
     final all = <String>{};
+    final excluded = excludePaths.map(_canonical).toSet();
 
-    for (final entity in _walk(root)) {
+    for (final entity in _walk(root, excluded)) {
       final name = _fileName(entity);
       final Set<String> refs;
       if (name.endsWith('.dart')) {
@@ -55,17 +60,21 @@ class UsageScanner {
     return UsageResult(public: public, all: all);
   }
 
-  Iterable<File> _walk(Directory root) sync* {
+  Iterable<File> _walk(Directory root, Set<String> excluded) sync* {
     for (final entity in root.listSync()) {
       final name = _fileName(entity);
       if (entity is Directory) {
         if (_skippedDirs.contains(name) || name.startsWith('.')) continue;
-        yield* _walk(entity);
+        if (excluded.contains(_canonical(entity.path))) continue;
+        yield* _walk(entity, excluded);
       } else if (entity is File) {
         yield entity;
       }
     }
   }
+
+  static String _canonical(String path) =>
+      Directory(path).absolute.uri.normalizePath().toString();
 
   bool _isPublic(Directory root, File file) {
     final rootSegments = root.absolute.uri.pathSegments

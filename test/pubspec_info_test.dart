@@ -45,5 +45,39 @@ dev_dependencies:
         throwsFormatException,
       );
     });
+
+    test('parses workspace member paths', () {
+      final info = PubspecInfo.parse('''
+name: my_workspace
+workspace:
+  - packages/app
+  - packages/core
+''');
+      expect(info.workspacePaths, ['packages/app', 'packages/core']);
+    });
+
+    test('parses dependency_overrides from pubspec and overrides file', () {
+      final info = PubspecInfo.parse('''
+name: my_app
+dependency_overrides:
+  local_pkg:
+    path: ../local_pkg
+  pinned_pkg: 1.2.3
+''', overridesContent: '''
+dependency_overrides:
+  git_pkg:
+    git: https://example.com/git_pkg.git
+''');
+
+      expect(info.overrides, hasLength(3));
+      final byName = {for (final o in info.overrides) o.name: o};
+      expect(byName['local_pkg']!.source, 'path');
+      expect(byName['local_pkg']!.origin, 'pubspec.yaml');
+      expect(byName['local_pkg']!.blocksRelease, isTrue);
+      expect(byName['pinned_pkg']!.source, 'version');
+      expect(byName['pinned_pkg']!.blocksRelease, isFalse);
+      expect(byName['git_pkg']!.source, 'git');
+      expect(byName['git_pkg']!.origin, 'pubspec_overrides.yaml');
+    });
   });
 }
