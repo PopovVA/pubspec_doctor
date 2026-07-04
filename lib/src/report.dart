@@ -24,6 +24,15 @@ class SdkIncompatiblePackage {
   final String currentSdk;
 }
 
+/// A package whose declared constraint does not allow the latest release,
+/// e.g. `^0.13.0` in the pubspec while pub.dev is at `1.2.0`.
+class OutdatedConstraint {
+  OutdatedConstraint({required this.health, required this.constraint});
+
+  final PackageHealth health;
+  final String constraint;
+}
+
 /// The full diagnosis for one project.
 class Report {
   Report({
@@ -36,6 +45,7 @@ class Report {
     required this.discontinued,
     required this.stale,
     required this.sdkIncompatible,
+    required this.outdatedConstraints,
     required this.errors,
     required this.checkedCount,
     required this.healthCheckSkipped,
@@ -63,6 +73,10 @@ class Report {
   /// Latest releases that do not support the current Dart SDK, i.e.
   /// upgrades are blocked until the SDK is updated.
   final List<SdkIncompatiblePackage> sdkIncompatible;
+
+  /// Declared constraints that do not allow the latest release — usually a
+  /// package added at an old major version. Informational, never fails.
+  final List<OutdatedConstraint> outdatedConstraints;
 
   final List<HealthCheckError> errors;
 
@@ -99,6 +113,9 @@ class Report {
             .toList(),
         'sdkIncompatible': sdkIncompatible
             .map((s) => {...s.health.toJson(), 'currentSdk': s.currentSdk})
+            .toList(),
+        'outdatedConstraints': outdatedConstraints
+            .map((o) => {...o.health.toJson(), 'constraint': o.constraint})
             .toList(),
         'errors': errors
             .map((e) => {'package': e.package, 'message': e.message})
@@ -145,6 +162,10 @@ class Report {
         '::warning file=$pubspecFile,title=SDK-incompatible latest release::'
             '${esc('${entry.health.name} ${entry.health.latestVersion} requires Dart '
                 '"${entry.health.sdkConstraint}" but the current SDK is ${entry.currentSdk} — upgrades are blocked')}',
+      for (final entry in outdatedConstraints)
+        '::warning file=$pubspecFile,title=Outdated constraint::'
+            '${esc('${entry.health.name} is constrained to "${entry.constraint}" which does not '
+                'allow the latest release ${entry.health.latestVersion}')}',
     ];
   }
 
@@ -212,6 +233,14 @@ class Report {
             '"${s.health.sdkConstraint}", current SDK is ${s.currentSdk})'),
       );
     }
+    if (outdatedConstraints.isNotEmpty) {
+      section(
+        'Outdated constraints (latest release not allowed):',
+        outdatedConstraints.map((o) => '${o.health.name} '
+            '(constraint "${o.constraint}" does not allow '
+            'latest ${o.health.latestVersion})'),
+      );
+    }
     if (errors.isNotEmpty) {
       section(
         'Health check errors:',
@@ -228,6 +257,7 @@ class Report {
         discontinued.isEmpty &&
         stale.isEmpty &&
         sdkIncompatible.isEmpty &&
+        outdatedConstraints.isEmpty &&
         errors.isEmpty) {
       out.writeln('No problems found. Your pubspec looks healthy!');
     }

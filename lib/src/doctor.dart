@@ -105,6 +105,7 @@ class Doctor {
     final discontinued = <PackageHealth>[];
     final stale = <StalePackage>[];
     final sdkIncompatible = <SdkIncompatiblePackage>[];
+    final outdatedConstraints = <OutdatedConstraint>[];
     final errors = <HealthCheckError>[];
 
     if (!options.offline) {
@@ -135,6 +136,15 @@ class Doctor {
                   currentSdk: currentSdk.toString(),
                 ));
               }
+              final constraint = pubspec.versionConstraints[package];
+              if (!health.isDiscontinued &&
+                  constraint != null &&
+                  !_constraintAllowsLatest(constraint, health.latestVersion)) {
+                outdatedConstraints.add(OutdatedConstraint(
+                  health: health,
+                  constraint: constraint,
+                ));
+              }
             } on PubApiException catch (e) {
               errors.add(
                 HealthCheckError(package: e.package, message: e.message),
@@ -152,6 +162,8 @@ class Doctor {
       discontinued.sort((a, b) => a.name.compareTo(b.name));
       stale.sort((a, b) => a.health.name.compareTo(b.health.name));
       sdkIncompatible.sort((a, b) => a.health.name.compareTo(b.health.name));
+      outdatedConstraints
+          .sort((a, b) => a.health.name.compareTo(b.health.name));
       errors.sort((a, b) => a.package.compareTo(b.package));
     }
 
@@ -167,6 +179,7 @@ class Doctor {
       discontinued: discontinued,
       stale: stale,
       sdkIncompatible: sdkIncompatible,
+      outdatedConstraints: outdatedConstraints,
       errors: errors,
       checkedCount: checked.length,
       healthCheckSkipped: options.offline,
@@ -179,6 +192,17 @@ class Doctor {
     if (constraint == null) return true;
     try {
       return VersionConstraint.parse(constraint).allows(sdk);
+    } on FormatException {
+      return true;
+    }
+  }
+
+  /// True when the declared [constraint] admits [latestVersion].
+  /// Unparseable input counts as allowed — err on the quiet side.
+  bool _constraintAllowsLatest(String constraint, String latestVersion) {
+    try {
+      return VersionConstraint.parse(constraint)
+          .allows(Version.parse(latestVersion));
     } on FormatException {
       return true;
     }

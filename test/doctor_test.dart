@@ -24,6 +24,7 @@ Map<String, Object?> pubInfo(
   bool discontinued = false,
   String? replacedBy,
   String published = '2026-01-01T00:00:00Z',
+  String version = '1.0.0',
   String? sdk,
 }) =>
     {
@@ -31,7 +32,7 @@ Map<String, Object?> pubInfo(
       if (discontinued) 'isDiscontinued': true,
       if (replacedBy != null) 'replacedBy': replacedBy,
       'latest': {
-        'version': '1.0.0',
+        'version': version,
         'published': published,
         if (sdk != null)
           'pubspec': {
@@ -269,6 +270,44 @@ import 'package:old_pkg/old_pkg.dart';
     expect(annotations[1], contains('alive_pkg'));
     expect(annotations[2], startsWith('::warning'));
     expect(annotations[2], contains('old_pkg'));
+  });
+
+  test('warns when a constraint does not allow the latest release', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dependencies:
+  old_major_pkg: ^0.13.0
+  fresh_pkg: ^1.0.0
+''');
+    write('lib/main.dart', '''
+import 'package:old_major_pkg/old_major_pkg.dart';
+import 'package:fresh_pkg/fresh_pkg.dart';
+''');
+
+    final doctor = Doctor(
+      apiClient: fakePubApi({
+        'old_major_pkg': pubInfo('old_major_pkg', version: '1.2.0'),
+        'fresh_pkg': pubInfo('fresh_pkg', version: '1.2.0'),
+      }),
+      now: DateTime.utc(2026, 7, 1),
+      sdkVersion: '3.9.0',
+    );
+    final report = await doctor.diagnose(root, DoctorOptions());
+
+    expect(
+      report.outdatedConstraints.map((o) => o.health.name),
+      ['old_major_pkg'],
+    );
+    expect(report.outdatedConstraints.single.constraint, '^0.13.0');
+    // Informational only: it never fails the build.
+    expect(report.hasProblems(failOnStale: true), isFalse);
+
+    final annotation = report
+        .toGithubAnnotations()
+        .where((a) => a.contains('old_major_pkg'))
+        .single;
+    expect(annotation, startsWith('::warning'));
+    expect(annotation, contains('1.2.0'));
   });
 
   test('reports dependency overrides; only path/git ones fail', () async {

@@ -37,6 +37,7 @@ class PubspecInfo {
     required this.sdkDependencies,
     required this.hostedDependencies,
     required this.raw,
+    this.versionConstraints = const {},
     this.workspacePaths = const [],
     this.overrides = const [],
   });
@@ -61,6 +62,10 @@ class PubspecInfo {
   /// The raw file content, used to detect non-import usages such as
   /// `packages/<name>/...` asset and font references.
   final String raw;
+
+  /// Declared version constraints (e.g. `^1.2.0`) for dependencies that
+  /// have one. Path, git and constraint-less entries are absent.
+  final Map<String, String> versionConstraints;
 
   /// Member package paths from a `workspace:` section (pub workspaces).
   /// Empty for regular packages.
@@ -96,6 +101,7 @@ class PubspecInfo {
 
     final sdkDeps = <String>{};
     final hostedDeps = <String>{};
+    final constraints = <String, String>{};
 
     Set<String> section(String key) {
       final node = doc[key];
@@ -115,6 +121,11 @@ class PubspecInfo {
                 !spec.containsKey('path') &&
                 !spec.containsKey('git'));
         if (isHosted) hostedDeps.add(depName);
+        if (spec is String) {
+          constraints[depName] = spec;
+        } else if (spec is YamlMap && spec['version'] is String) {
+          constraints[depName] = spec['version'] as String;
+        }
       }
       return names;
     }
@@ -136,6 +147,7 @@ class PubspecInfo {
       sdkDependencies: sdkDeps,
       hostedDependencies: hostedDeps,
       raw: content,
+      versionConstraints: constraints,
       workspacePaths: workspace is YamlList
           ? workspace.map((p) => p.toString()).toList()
           : const [],
