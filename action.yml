@@ -1,7 +1,8 @@
 name: pubspec_doctor
+# Marketplace requires the description to be under 125 characters.
 description: >-
   Audit pubspec.yaml dependencies: fail the build on unused or discontinued
-  packages and annotate the pull request with the findings.
+  packages, with PR annotations.
 author: PopovVA
 branding:
   icon: activity
