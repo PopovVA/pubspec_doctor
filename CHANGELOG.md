@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.7.0...v0.7.1) (2026-07-05)
+
+
+### Bug Fixes
+
+* shorten action description for GitHub Marketplace ([#20](https://github.com/PopovVA/pubspec_doctor/issues/20)) ([3c5feb2](https://github.com/PopovVA/pubspec_doctor/commit/3c5feb28a98d4d5eb78441e68cae131883d93d53))
+
 ## [0.7.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.6.0...v0.7.0) (2026-07-04)
 
 
