@@ -2,7 +2,7 @@ name: pubspec_doctor
 description: >-
   Audit pubspec.yaml dependencies and assets: unused, discontinued and stale
   packages, wrong sections, leftover overrides, missing assets. Built for CI.
-version: 0.9.0
+version: 0.10.0
 repository: https://github.com/PopovVA/pubspec_doctor
 
 environment:
