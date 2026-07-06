@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.7.1...v0.8.0) (2026-07-06)
+
+
+### Features
+
+* detect config-driven package usage ([#22](https://github.com/PopovVA/pubspec_doctor/issues/22)) ([38f9c32](https://github.com/PopovVA/pubspec_doctor/commit/38f9c3283c34fe5a9fda20364d43db7c4ba5887a))
+
 ## [0.7.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.7.0...v0.7.1) (2026-07-05)
 
 
