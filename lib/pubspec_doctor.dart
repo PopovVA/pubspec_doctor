@@ -2,6 +2,7 @@
 /// discontinued or stale ones using the pub.dev API.
 library;
 
+export 'src/asset_checker.dart';
 export 'src/codegen_detector.dart';
 export 'src/config.dart';
 export 'src/doctor.dart';

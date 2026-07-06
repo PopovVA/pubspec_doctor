@@ -47,6 +47,8 @@ class Report {
     required this.sdkIncompatible,
     required this.outdatedConstraints,
     required this.errors,
+    this.missingAssets = const [],
+    this.unusedAssets = const [],
     required this.checkedCount,
     required this.healthCheckSkipped,
   });
@@ -80,6 +82,14 @@ class Report {
 
   final List<HealthCheckError> errors;
 
+  /// Assets declared under `flutter: assets:`/`fonts:` that do not exist
+  /// on disk — the Flutter build would fail.
+  final List<String> missingAssets;
+
+  /// Asset files that no string literal in the project references.
+  /// Heuristic, so informational only — never fails the run.
+  final List<String> unusedAssets;
+
   /// Number of dependencies inspected (both sections, SDK deps excluded).
   final int checkedCount;
 
@@ -97,6 +107,7 @@ class Report {
       hasPromotionIssues ||
       overrides.any((o) => o.blocksRelease) ||
       discontinued.isNotEmpty ||
+      missingAssets.isNotEmpty ||
       (failOnStale && stale.isNotEmpty);
 
   Map<String, Object?> toJson() => {
@@ -117,6 +128,8 @@ class Report {
         'outdatedConstraints': outdatedConstraints
             .map((o) => {...o.health.toJson(), 'constraint': o.constraint})
             .toList(),
+        'missingAssets': missingAssets,
+        'unusedAssets': unusedAssets,
         'errors': errors
             .map((e) => {'package': e.package, 'message': e.message})
             .toList(),
@@ -166,6 +179,12 @@ class Report {
         '::warning file=$pubspecFile,title=Outdated constraint::'
             '${esc('${entry.health.name} is constrained to "${entry.constraint}" which does not '
                 'allow the latest release ${entry.health.latestVersion}')}',
+      for (final asset in missingAssets)
+        '::error file=$pubspecFile,title=Missing asset::'
+            '${esc('$asset is declared in the pubspec but does not exist')}',
+      for (final asset in unusedAssets)
+        '::warning file=$pubspecFile,title=Possibly unused asset::'
+            '${esc('$asset is not referenced by any string literal in the project')}',
     ];
   }
 
@@ -200,6 +219,18 @@ class Report {
       section(
         'Under-promoted (used in runtime code — move to dependencies):',
         underPromoted,
+      );
+    }
+    if (missingAssets.isNotEmpty) {
+      section(
+        'Missing assets (declared in pubspec, not found on disk):',
+        missingAssets,
+      );
+    }
+    if (unusedAssets.isNotEmpty) {
+      section(
+        'Possibly unused assets (no reference found in code):',
+        unusedAssets,
       );
     }
     if (overrides.isNotEmpty) {
@@ -258,6 +289,8 @@ class Report {
         stale.isEmpty &&
         sdkIncompatible.isEmpty &&
         outdatedConstraints.isEmpty &&
+        missingAssets.isEmpty &&
+        unusedAssets.isEmpty &&
         errors.isEmpty) {
       out.writeln('No problems found. Your pubspec looks healthy!');
     }
