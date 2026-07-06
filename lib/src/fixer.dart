@@ -83,6 +83,8 @@ class Fixer {
         origin: 'pubspec.yaml',
         applied: applied,
       );
+
+      _removeMissingAssetDeclarations(report, editor, applied);
     }
 
     if (outdated) {
@@ -107,6 +109,94 @@ class Fixer {
     }
 
     return applied;
+  }
+
+  /// Deletes asset files reported as possibly unused. Only files tracked
+  /// by git are deleted, so every deletion is recoverable with
+  /// `git checkout`; untracked files are skipped with a note.
+  List<String> deleteUnusedAssets(Directory root, Report report) {
+    final applied = <String>[];
+    for (final asset in report.unusedAssets) {
+      final file = File(
+          '${root.path}${Platform.pathSeparator}${asset.replaceAll('/', Platform.pathSeparator)}');
+      if (!file.existsSync()) continue;
+      if (!_isGitTracked(root, asset)) {
+        applied.add('skipped $asset (not tracked by git — delete it manually)');
+        continue;
+      }
+      file.deleteSync();
+      applied.add('deleted unused asset $asset');
+    }
+    return applied;
+  }
+
+  bool _isGitTracked(Directory root, String relativePath) {
+    try {
+      return Process.runSync(
+            'git',
+            [
+              '-C',
+              root.path,
+              'ls-files',
+              '--error-unmatch',
+              '--',
+              relativePath
+            ],
+          ).exitCode ==
+          0;
+    } on ProcessException {
+      return false;
+    }
+  }
+
+  /// Removes `flutter: assets:` entries whose path does not exist on disk.
+  /// Missing font files are left alone — restructuring font families is a
+  /// human decision.
+  void _removeMissingAssetDeclarations(
+    Report report,
+    YamlEditor editor,
+    List<String> applied,
+  ) {
+    if (report.missingAssets.isEmpty) return;
+    final missing = report.missingAssets.toSet();
+
+    String? pathOf(Object? entry) {
+      if (entry is String) return entry;
+      if (entry is YamlMap && entry['path'] is String) {
+        return entry['path'] as String;
+      }
+      return null;
+    }
+
+    String normalize(String path) =>
+        path.startsWith('./') ? path.substring(2) : path;
+
+    YamlList? assetsList() {
+      final doc = loadYaml(editor.toString());
+      final flutter = doc is YamlMap ? doc['flutter'] : null;
+      final assets = flutter is YamlMap ? flutter['assets'] : null;
+      return assets is YamlList ? assets : null;
+    }
+
+    final assets = assetsList();
+    if (assets == null) return;
+    // Remove from the end so earlier indices stay valid.
+    for (var i = assets.length - 1; i >= 0; i--) {
+      final path = pathOf(assets[i]);
+      if (path != null && missing.contains(normalize(path))) {
+        editor.remove(['flutter', 'assets', i]);
+        applied.add('removed missing asset declaration $path');
+      }
+    }
+
+    if (assetsList()?.isEmpty ?? false) {
+      editor.remove(['flutter', 'assets']);
+      final doc = loadYaml(editor.toString());
+      final flutter = doc is YamlMap ? doc['flutter'] : null;
+      if (flutter is YamlMap && flutter.isEmpty) {
+        editor.remove(['flutter']);
+      }
+    }
   }
 
   /// Removes path/git overrides that live in the file [origin] using the

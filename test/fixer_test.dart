@@ -136,6 +136,77 @@ dependency_overrides:
     expect(File('${root.path}/pubspec_overrides.yaml').existsSync(), isFalse);
   });
 
+  test('removes missing asset declarations but not missing fonts', () async {
+    write('pubspec.yaml', '''
+name: my_app
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/present.png
+    - assets/gone.png
+    - path: assets/also_gone/
+  fonts:
+    - family: Missing
+      fonts:
+        - asset: fonts/Missing.ttf
+''');
+    write('assets/present.png', '');
+    write('lib/main.dart', "const a = 'assets/present.png';");
+
+    Fixer().apply(root, await diagnose());
+
+    final result = pubspec();
+    expect(result, contains('assets/present.png'));
+    expect(result, isNot(contains('assets/gone.png')));
+    expect(result, isNot(contains('assets/also_gone/')));
+    // Fonts and unrelated flutter keys stay untouched.
+    expect(result, contains('fonts/Missing.ttf'));
+    expect(result, contains('uses-material-design: true'));
+  });
+
+  test('drops an emptied assets list', () async {
+    write('pubspec.yaml', '''
+name: my_app
+flutter:
+  assets:
+    - assets/gone.png
+''');
+    write('lib/main.dart', '');
+
+    Fixer().apply(root, await diagnose());
+
+    final result = pubspec();
+    expect(result, isNot(contains('assets:')));
+    expect(result, isNot(contains('flutter:')));
+  });
+
+  test('deleteUnusedAssets deletes git-tracked files, skips untracked',
+      () async {
+    write('pubspec.yaml', '''
+name: my_app
+flutter:
+  assets:
+    - assets/
+''');
+    write('assets/tracked.png', 'x');
+    write('assets/untracked.png', 'x');
+    write('lib/main.dart', '');
+    Process.runSync('git', ['-C', root.path, 'init', '-q']);
+    Process.runSync(
+        'git', ['-C', root.path, 'add', 'assets/tracked.png', 'pubspec.yaml']);
+
+    final report = await diagnose();
+    expect(report.unusedAssets,
+        containsAll({'assets/tracked.png', 'assets/untracked.png'}));
+
+    final applied = Fixer().deleteUnusedAssets(root, report);
+
+    expect(File('${root.path}/assets/tracked.png').existsSync(), isFalse);
+    expect(File('${root.path}/assets/untracked.png').existsSync(), isTrue);
+    expect(applied.join('\n'), contains('deleted unused asset'));
+    expect(applied.join('\n'), contains('delete it manually'));
+  });
+
   test('bumps outdated constraints only with outdated: true', () async {
     write('pubspec.yaml', '''
 name: my_app

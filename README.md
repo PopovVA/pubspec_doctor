@@ -77,18 +77,28 @@ Stale packages (no release in a long time):
 | `--json` | Machine-readable JSON report. |
 | `--fix` | Apply safe fixes to `pubspec.yaml` (see below). |
 | `--fix-outdated` | Also bump constraints that block the latest release. |
+| `--delete-unused-assets` | Delete possibly-unused asset files (git-tracked only). |
 
 ### Fixing what it finds
 
 `--fix` edits `pubspec.yaml` in place, preserving comments and formatting:
 unused dependencies are removed, wrongly promoted ones move to the right
-section, and path/git `dependency_overrides` are deleted. Discontinued and
-stale packages are never touched — replacing a package is your call.
+section, path/git `dependency_overrides` are deleted, and asset
+declarations pointing at files that do not exist are dropped. Discontinued
+and stale packages are never touched — replacing a package is your call.
 
 `--fix-outdated` additionally rewrites constraints that do not allow the
 latest release (e.g. `^0.13.0` becomes `^1.6.0`). That can pull in breaking
-changes, which is why it is a separate flag. After any fix, review the git
-diff, then run `dart pub get` and your tests.
+changes, which is why it is a separate flag.
+
+`--delete-unused-assets` deletes the asset **files** reported as possibly
+unused. Deleting files is a bigger deal than editing YAML, hence the
+explicit name and an extra safety net: only files tracked by git are
+deleted (every deletion is recoverable with `git checkout`), untracked
+files are listed for manual review instead.
+
+After any fix, review the git diff, then run `dart pub get` and your
+tests.
 
 ### Exit codes
 
