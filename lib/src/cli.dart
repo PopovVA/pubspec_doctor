@@ -52,6 +52,13 @@ Future<int> run(List<String> arguments) async {
           '(may pull in breaking changes — review the diff).',
     )
     ..addFlag(
+      'delete-unused-assets',
+      negatable: false,
+      help: 'Delete asset files reported as possibly unused. Only '
+          'git-tracked files are deleted (recoverable with git checkout); '
+          'untracked files are skipped.',
+    )
+    ..addFlag(
       'help',
       abbr: 'h',
       negatable: false,
@@ -128,19 +135,26 @@ Future<int> run(List<String> arguments) async {
         }
       }
     }
-    if (args.flag('fix') || args.flag('fix-outdated')) {
+    if (args.flag('fix') ||
+        args.flag('fix-outdated') ||
+        args.flag('delete-unused-assets')) {
       final fixer = Fixer();
       var fixedAny = false;
       for (final result in results) {
         final dir = result.path == '.'
             ? root
             : Directory('${root.path}${Platform.pathSeparator}${result.path}');
-        final applied = fixer.apply(
-          dir,
-          result.report,
-          safe: args.flag('fix'),
-          outdated: args.flag('fix-outdated'),
-        );
+        final applied = <String>[
+          if (args.flag('fix') || args.flag('fix-outdated'))
+            ...fixer.apply(
+              dir,
+              result.report,
+              safe: args.flag('fix'),
+              outdated: args.flag('fix-outdated'),
+            ),
+          if (args.flag('delete-unused-assets'))
+            ...fixer.deleteUnusedAssets(dir, result.report),
+        ];
         if (applied.isEmpty) continue;
         fixedAny = true;
         stdout.writeln(isWorkspace
