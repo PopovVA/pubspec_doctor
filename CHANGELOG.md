@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.9.0...v0.10.0) (2026-07-06)
+
+
+### Features
+
+* fix missing asset declarations, delete unused assets on request ([#26](https://github.com/PopovVA/pubspec_doctor/issues/26)) ([d987150](https://github.com/PopovVA/pubspec_doctor/commit/d9871508f40d20c03e03e371e31b97ed7fdadf05))
+
 ## [0.9.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.8.0...v0.9.0) (2026-07-06)
 
 
