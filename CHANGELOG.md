@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.8.0...v0.9.0) (2026-07-06)
+
+
+### Features
+
+* missing and unused asset checks ([#24](https://github.com/PopovVA/pubspec_doctor/issues/24)) ([4a92448](https://github.com/PopovVA/pubspec_doctor/commit/4a92448de14c58e192158d21e26adae5536557ab))
+
 ## [0.8.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.7.1...v0.8.0) (2026-07-06)
 
 
