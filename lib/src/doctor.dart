@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:pub_semver/pub_semver.dart';
 
+import 'asset_checker.dart';
 import 'codegen_detector.dart';
 import 'pub_api_client.dart';
 import 'pubspec_info.dart';
@@ -102,6 +103,12 @@ class Doctor {
     final checked = {...pubspec.dependencies, ...pubspec.devDependencies}
         .difference(options.ignore);
 
+    final assets = AssetChecker().check(
+      root,
+      assetPaths: pubspec.assetPaths,
+      fontAssets: pubspec.fontAssets,
+    );
+
     final discontinued = <PackageHealth>[];
     final stale = <StalePackage>[];
     final sdkIncompatible = <SdkIncompatiblePackage>[];
@@ -181,6 +188,8 @@ class Doctor {
       sdkIncompatible: sdkIncompatible,
       outdatedConstraints: outdatedConstraints,
       errors: errors,
+      missingAssets: assets.missing,
+      unusedAssets: assets.unused,
       checkedCount: checked.length,
       healthCheckSkipped: options.offline,
     );

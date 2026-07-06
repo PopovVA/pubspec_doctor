@@ -21,6 +21,10 @@ CLI that audits the dependencies in your `pubspec.yaml`:
 - **Leftover overrides** — `dependency_overrides` entries in `pubspec.yaml`
   or `pubspec_overrides.yaml`. Path and git overrides fail the run (they
   must not survive to a release); version pins are warnings.
+- **Missing assets** — declared under `flutter: assets:` or `fonts:` but
+  not present on disk, which breaks the Flutter build.
+- **Unused assets** *(informational)* — asset files that no string literal
+  in the project references. Dead images silently bloat the app bundle.
 
 Pub workspaces are supported out of the box: when the pubspec has a
 `workspace:` section, every member package is diagnosed (workspace members
@@ -175,6 +179,19 @@ recognized automatically:
 
 Anything else that is intentionally unimported can be listed in the
 config `ignore` or via `--ignore`.
+
+## How "unused assets" are detected
+
+Files from declared `flutter: assets:` entries (directories are
+non-recursive, exactly like in Flutter) are matched against string
+literals in your Dart code. An asset counts as **used** when a literal
+contains its full path or its file name, or when a literal with
+interpolation mentions its directory — so
+`Image.asset('assets/flags/$code.png')` marks the whole `assets/flags/`
+directory as used. Resolution variants (`assets/2.0x/logo.png`) resolve
+to their logical path first. Because dynamic paths make certainty
+impossible, unused assets are reported as warnings and never fail the
+build.
 
 ## Roadmap
 

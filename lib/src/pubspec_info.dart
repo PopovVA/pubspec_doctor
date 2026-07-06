@@ -40,6 +40,8 @@ class PubspecInfo {
     this.versionConstraints = const {},
     this.workspacePaths = const [],
     this.overrides = const [],
+    this.assetPaths = const [],
+    this.fontAssets = const [],
   });
 
   /// The package name declared in `pubspec.yaml`.
@@ -74,6 +76,13 @@ class PubspecInfo {
   /// `dependency_overrides:` entries from both `pubspec.yaml` and
   /// `pubspec_overrides.yaml`.
   final List<DependencyOverride> overrides;
+
+  /// Entries under `flutter: assets:` — file paths or directory paths
+  /// (ending with `/`). Map-form entries contribute their `path`.
+  final List<String> assetPaths;
+
+  /// Font files from `flutter: fonts:` (`asset:` keys).
+  final List<String> fontAssets;
 
   static PubspecInfo load(Directory root) {
     final file = File('${root.path}${Platform.pathSeparator}pubspec.yaml');
@@ -130,6 +139,34 @@ class PubspecInfo {
       return names;
     }
 
+    final assetPaths = <String>[];
+    final fontAssets = <String>[];
+    final flutterNode = doc['flutter'];
+    if (flutterNode is YamlMap) {
+      final assetsNode = flutterNode['assets'];
+      if (assetsNode is YamlList) {
+        for (final entry in assetsNode) {
+          if (entry is String) {
+            assetPaths.add(entry);
+          } else if (entry is YamlMap && entry['path'] is String) {
+            assetPaths.add(entry['path'] as String);
+          }
+        }
+      }
+      final fontsNode = flutterNode['fonts'];
+      if (fontsNode is YamlList) {
+        for (final family in fontsNode) {
+          final fonts = family is YamlMap ? family['fonts'] : null;
+          if (fonts is! YamlList) continue;
+          for (final font in fonts) {
+            if (font is YamlMap && font['asset'] is String) {
+              fontAssets.add(font['asset'] as String);
+            }
+          }
+        }
+      }
+    }
+
     final workspace = doc['workspace'];
     final overrides = [
       ..._parseOverrides(doc['dependency_overrides'], 'pubspec.yaml'),
@@ -152,6 +189,8 @@ class PubspecInfo {
           ? workspace.map((p) => p.toString()).toList()
           : const [],
       overrides: overrides,
+      assetPaths: assetPaths,
+      fontAssets: fontAssets,
     );
   }
 

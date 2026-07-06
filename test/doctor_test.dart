@@ -272,6 +272,35 @@ import 'package:old_pkg/old_pkg.dart';
     expect(annotations[2], contains('old_pkg'));
   });
 
+  test('missing assets fail the run, unused assets only warn', () async {
+    write('pubspec.yaml', '''
+name: my_app
+flutter:
+  assets:
+    - assets/present.png
+    - assets/gone.png
+''');
+    write('assets/present.png', '');
+    write('lib/main.dart', '');
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    expect(report.missingAssets, ['assets/gone.png']);
+    expect(report.unusedAssets, ['assets/present.png']);
+    expect(report.hasProblems(failOnStale: false), isTrue);
+
+    final annotations = report.toGithubAnnotations();
+    expect(
+      annotations.where((a) => a.contains('assets/gone.png')).single,
+      startsWith('::error'),
+    );
+    expect(
+      annotations.where((a) => a.contains('assets/present.png')).single,
+      startsWith('::warning'),
+    );
+  });
+
   test('config-driven packages are not reported as unused', () async {
     write('pubspec.yaml', '''
 name: my_app
