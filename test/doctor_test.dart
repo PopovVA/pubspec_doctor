@@ -272,6 +272,33 @@ import 'package:old_pkg/old_pkg.dart';
     expect(annotations[2], contains('old_pkg'));
   });
 
+  test('config-driven packages are not reported as unused', () async {
+    write('pubspec.yaml', '''
+name: my_app
+dev_dependencies:
+  flutter_native_splash: ^2.0.0
+  intl_utils: ^2.8.0
+  json_serializable: ^6.0.0
+  truly_unused: ^1.0.0
+''');
+    write('lib/main.dart', '');
+    write('flutter_native_splash.yaml', 'color: "#ffffff"\n');
+    write('Makefile', 'gen:\n\tflutter pub run intl_utils:generate\n');
+    write('build.yaml', '''
+targets:
+  \$default:
+    builders:
+      json_serializable:
+        options:
+          explicit_to_json: true
+''');
+
+    final report = await Doctor(apiClient: fakePubApi({}))
+        .diagnose(root, DoctorOptions(offline: true));
+
+    expect(report.unusedDevDependencies, ['truly_unused']);
+  });
+
   test('warns when a constraint does not allow the latest release', () async {
     write('pubspec.yaml', '''
 name: my_app

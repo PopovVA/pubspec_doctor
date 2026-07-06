@@ -57,6 +57,55 @@ flutter:
     expect(used.all, {'visible'});
   });
 
+  test('root-level config file named after a package counts as usage', () {
+    write('flutter_native_splash.yaml', 'color: "#ffffff"\n');
+    write('lib/main.dart', '');
+
+    final used = UsageScanner().scan(root, pubspecRaw: '');
+    expect(used.all, contains('flutter_native_splash'));
+    expect(used.public, isNot(contains('flutter_native_splash')));
+  });
+
+  test('packages mentioned in build.yaml count as usage', () {
+    write('build.yaml', '''
+targets:
+  \$default:
+    builders:
+      json_serializable:
+        options:
+          explicit_to_json: true
+      intl_utils|intl_utils:
+        enabled: true
+''');
+    write('lib/main.dart', '');
+
+    final used = UsageScanner().scan(root, pubspecRaw: '');
+    expect(used.all, containsAll({'json_serializable', 'intl_utils'}));
+  });
+
+  test('dart run in Makefiles, scripts and CI workflows counts as usage', () {
+    write('Makefile', 'icons:\n\tdart run flutter_launcher_icons\n');
+    write('scripts/gen.sh', 'flutter pub run intl_utils:generate\n');
+    write('.github/workflows/ci.yml', '''
+jobs:
+  build:
+    steps:
+      - run: dart pub run dart_code_metrics:metrics analyze lib
+''');
+    write('lib/main.dart', '');
+
+    final used = UsageScanner().scan(root, pubspecRaw: '');
+    expect(
+      used.all,
+      containsAll({
+        'flutter_launcher_icons',
+        'intl_utils',
+        'dart_code_metrics',
+      }),
+    );
+    expect(used.public, isNot(contains('intl_utils')));
+  });
+
   test('splits references into runtime (public) and dev usage', () {
     write('lib/app.dart', "import 'package:lib_pkg/lib_pkg.dart';");
     write('bin/cli.dart', "import 'package:bin_pkg/bin_pkg.dart';");

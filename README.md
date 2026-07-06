@@ -165,7 +165,13 @@ recognized automatically:
   other common pairs;
 - `build_runner`, when any declared package looks like a generator;
 - tools configured through a top-level `pubspec.yaml` key, such as
-  `flutter_launcher_icons` and `flutter_native_splash`.
+  `flutter_launcher_icons` and `flutter_native_splash`;
+- tools configured through a root-level `<package>.yaml` file
+  (e.g. `flutter_native_splash.yaml`);
+- packages referenced in `build.yaml`;
+- packages invoked as `dart run <package>` / `flutter pub run <package>`
+  in shell scripts, Makefiles, justfiles and CI workflows (including
+  `.github/workflows`).
 
 Anything else that is intentionally unimported can be listed in the
 config `ignore` or via `--ignore`.
