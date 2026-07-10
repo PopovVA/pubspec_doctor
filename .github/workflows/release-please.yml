@@ -22,7 +22,7 @@ jobs:
           release-type: dart
       # Keep the moving major tag (v0, v1, ...) on the latest release so
       # `uses: PopovVA/pubspec_doctor@v0` always resolves to it.
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         if: ${{ steps.release.outputs.release_created }}
       - if: ${{ steps.release.outputs.release_created }}
         run: |
