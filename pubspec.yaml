@@ -5,6 +5,13 @@ description: >-
 version: 0.10.0
 repository: https://github.com/PopovVA/pubspec_doctor
 
+topics:
+  - cli
+  - dependencies
+  - pubspec
+  - tooling
+  - ci
+
 environment:
   sdk: ^3.5.0
 
