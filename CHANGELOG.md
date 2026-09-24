@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.1](https://github.com/PopovVA/pubspec_doctor/compare/v0.10.0...v0.10.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* declare pub.dev topics so the package is discoverable ([#33](https://github.com/PopovVA/pubspec_doctor/issues/33)) ([f1afa18](https://github.com/PopovVA/pubspec_doctor/commit/f1afa188cff91d1869ad60f5c0e371427417a883))
+
 ## [0.10.0](https://github.com/PopovVA/pubspec_doctor/compare/v0.9.0...v0.10.0) (2026-07-06)
 
 
