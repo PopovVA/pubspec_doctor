@@ -1,6 +1,7 @@
 # pubspec_doctor
 
 [![CI](https://github.com/PopovVA/pubspec_doctor/actions/workflows/ci.yml/badge.svg)](https://github.com/PopovVA/pubspec_doctor/actions/workflows/ci.yml)
+[![Buy me a coffee](https://img.shields.io/badge/Buy%20me%20a%20coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://buymeacoffee.com/LeonRedfield)
 
 CLI that audits the dependencies in your `pubspec.yaml`:
 
@@ -206,6 +207,11 @@ build.
 ## Roadmap
 
 Suggestions welcome — [file an issue](https://github.com/PopovVA/pubspec_doctor/issues).
+
+## Support
+
+This package is free and maintained in my own time. If it saved you some,
+[buy me a coffee](https://buymeacoffee.com/LeonRedfield).
 
 ## License
 
