@@ -25,3 +25,10 @@ jobs:
       # to work on a newer SDK.)
       - run: dart pub downgrade
       - run: dart analyze --fatal-infos
+
+  leaks:
+    name: No leaked identifiers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: .github/leak-scan.sh
